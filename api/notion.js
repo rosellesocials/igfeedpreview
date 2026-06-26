@@ -13,11 +13,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+    const cleanId = databaseId.replace(/-/g, '');
+
+    const response = await fetch(`https://api.notion.com/v1/data_sources/${cleanId}/query`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Notion-Version': '2022-06-28',
+        Authorization: `Bearer ${token}`,
+        'Notion-Version': '2025-09-03',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ page_size: 9 })
@@ -31,13 +33,15 @@ export default async function handler(req, res) {
 
     const items = data.results.map(page => {
       let image = null;
+
       if (page.cover) {
         image = page.cover.type === 'external'
           ? page.cover.external.url
           : page.cover.file?.url;
       }
+
       if (!image) {
-        for (const key of Object.keys(page.properties)) {
+        for (const key of Object.keys(page.properties || {})) {
           const prop = page.properties[key];
           if (prop.type === 'files' && prop.files?.length > 0) {
             const f = prop.files[0];
@@ -48,7 +52,7 @@ export default async function handler(req, res) {
       }
 
       let title = 'Untitled';
-      for (const key of Object.keys(page.properties)) {
+      for (const key of Object.keys(page.properties || {})) {
         const prop = page.properties[key];
         if (prop.type === 'title' && prop.title?.length > 0) {
           title = prop.title.map(t => t.plain_text).join('');
@@ -57,7 +61,7 @@ export default async function handler(req, res) {
       }
 
       let date = null;
-      for (const key of Object.keys(page.properties)) {
+      for (const key of Object.keys(page.properties || {})) {
         const prop = page.properties[key];
         if (prop.type === 'date' && prop.date) {
           date = prop.date.start;
