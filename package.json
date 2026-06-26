@@ -1,0 +1,6 @@
+{
+  "name": "notion-instagram-grid",
+  "version": "1.0.0",
+  "description": "Instagram Grid Widget powered by Notion",
+  "main": "api/notion.js"
+}

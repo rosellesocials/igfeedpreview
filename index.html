@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Instagram Grid Widget</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f0eb; min-height: 100vh; display: flex; }
+
+    .sidebar { width: 200px; background: #fff; padding: 2rem 1.25rem; border-right: 1px solid #e8e0d8; display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0; }
+    .logo { font-size: 1.1rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1rem; line-height: 1.3; }
+    .logo span { color: #c0392b; font-style: italic; }
+    .nav-item { padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 14px; color: #666; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .nav-item.active { background: #f5f0eb; color: #1a1a1a; font-weight: 500; }
+    .nav-item svg { width: 16px; height: 16px; }
+
+    .main { flex: 1; padding: 2rem; overflow-y: auto; }
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 1.5rem; color: #1a1a1a; }
+
+    .card { background: #fff; border-radius: 14px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #e8e0d8; }
+    .card-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+
+    label { font-size: 13px; color: #888; display: block; margin-bottom: 6px; }
+    input[type="text"], input[type="url"] {
+      width: 100%; padding: 10px 14px; border: 1px solid #e0d8d0; border-radius: 8px;
+      font-size: 14px; background: #f9f6f2; outline: none; color: #1a1a1a;
+    }
+    input:focus { border-color: #c0392b; background: #fff; }
+
+    .steps { font-size: 13px; color: #666; line-height: 1.8; }
+    .steps span { display: block; }
+
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; margin-top: 1rem; }
+    .toggle { width: 44px; height: 24px; background: #ddd; border-radius: 12px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+    .toggle.on { background: #c0392b; }
+    .toggle::after { content: ''; position: absolute; width: 20px; height: 20px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .toggle.on::after { left: 22px; }
+    .toggle-label { font-size: 13px; color: #555; }
+
+    .btn { background: #555; color: #fff; border: none; border-radius: 10px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s; }
+    .btn:hover { background: #333; }
+
+    .status { font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-top: 1rem; display: none; }
+    .status.loading { background: #fef9e7; color: #b7950b; border: 1px solid #f9e79f; }
+    .status.success { background: #eafaf1; color: #1e8449; border: 1px solid #a9dfbf; }
+    .status.error { background: #fdedec; color: #c0392b; border: 1px solid #f5b7b1; }
+
+    .preview-area { min-height: 300px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: #aaa; font-size: 14px; text-align: center; }
+    .preview-area svg { width: 48px; height: 48px; opacity: 0.3; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border-radius: 10px; overflow: hidden; }
+    .grid-cell { aspect-ratio: 1; background: #f0e8e0; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .grid-cell img { width: 100%; height: 100%; object-fit: cover; }
+    .grid-cell .cell-label { font-size: 10px; color: #888; text-align: center; padding: 4px; }
+    .grid-cell .date-badge { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.5); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+    .items-list { margin-top: 1rem; }
+    .item-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0e8e0; font-size: 13px; color: #444; }
+    .item-row .dot { width: 8px; height: 8px; border-radius: 50%; background: #c0392b; flex-shrink: 0; }
+    .item-row .has-img { margin-left: auto; font-size: 11px; color: #27ae60; }
+
+    .hint { font-size: 11px; color: #aaa; margin-top: 6px; }
+    .show-instructions { color: #c0392b; font-size: 12px; cursor: pointer; margin-top: 6px; display: inline-block; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">instagram<br>grid<br><span>preview</span></div>
+  <div class="nav-item">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    Welcome
+  </div>
+  <div class="nav-item active">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    Setup
+  </div>
+  <div class="nav-item">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Help
+  </div>
+  <div class="nav-item">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+    Account
+  </div>
+</div>
+
+<div class="main">
+  <h1>Widget Setup</h1>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-title">🔑 Notion Integration Token</div>
+        <input type="text" id="token" placeholder="ntn_..." />
+        <div class="hint">Copy the token from your integration's page</div>
+        <span class="show-instructions" onclick="alert('Go to notion.so/my-integrations → Create integration → Copy the token')">+ Show Instructions</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗂 Connect integration with database</div>
+        <div class="steps">
+          <span>1 &nbsp;Open your database in Notion. Click ··· icon in top-right</span>
+          <span>2 &nbsp;Select "Connect to" → Choose your integration</span>
+        </div>
+        <div class="toggle-wrap">
+          <div class="toggle" id="toggle" onclick="this.classList.toggle('on'); document.getElementById('tlabel').textContent = this.classList.contains('on') ? 'Yes, I\'ve completed the steps above' : 'Mark as complete'"></div>
+          <span class="toggle-label" id="tlabel">Mark as complete</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔗 Database URL</div>
+        <input type="url" id="dburl" placeholder="https://www.notion.so/workspace/..." />
+        <div class="hint">Paste the URL of your Notion database</div>
+        <span class="show-instructions" onclick="alert('Open your database in Notion → Copy the URL from your browser address bar')">+ Show Instructions</span>
+      </div>
+
+      <button class="btn" onclick="generate()">
+        Create Gallery Widget
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      </button>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-title">🖼 Widget Preview</div>
+        <div class="preview-area" id="preview">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7l9 6 9-6"/></svg>
+          <p>Your widget preview will appear here<br>Fill out the form to get started</p>
+        </div>
+        <div class="items-list" id="items-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function extractDbId(url) {
+    const patterns = [
+      /([a-f0-9]{32})(?:\?|&|$)/i,
+      /\/p\/[^\/]*?([a-f0-9]{32})/i,
+      /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
+      /([a-f0-9]{32})/i
+    ];
+    for (const p of patterns) {
+      const m = url.match(p);
+      if (m) return m[1].replace(/-/g, '');
+    }
+    return null;
+  }
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.style.display = 'block';
+    el.className = 'status ' + type;
+    el.textContent = msg;
+  }
+
+  async function generate() {
+    const token = document.getElementById('token').value.trim();
+    const dburl = document.getElementById('dburl').value.trim();
+    const toggled = document.getElementById('toggle').classList.contains('on');
+
+    if (!token) return showStatus('Please enter your Notion integration token.', 'error');
+    if (!toggled) return showStatus('Please confirm you\'ve connected the integration to your database.', 'error');
+    if (!dburl) return showStatus('Please enter your Notion database URL.', 'error');
+
+    const dbId = extractDbId(dburl);
+    if (!dbId) return showStatus('Could not find a valid database ID in that URL.', 'error');
+
+    showStatus('Connecting to your Notion database...', 'loading');
+
+    try {
+      const res = await fetch('/api/notion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, databaseId: dbId })
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        return showStatus('Error: ' + (data.error || 'Could not connect. Check your token and database access.'), 'error');
+      }
+
+      showStatus(data.items.length + ' items loaded successfully!', 'success');
+      renderGrid(data.items);
+
+    } catch(e) {
+      showStatus('Connection failed. Please try again.', 'error');
+    }
+  }
+
+  function renderGrid(items) {
+    const colors = ['#f0e0d6','#d6e8f0','#d6f0e0','#f0d6e8','#e8f0d6','#e8d6f0','#f0f0d6','#d6d6f0','#f0d6d6'];
+    let html = '<div class="grid">';
+    for (let i = 0; i < 9; i++) {
+      const item = items[i];
+      if (item && item.image) {
+        html += `<div class="grid-cell"><img src="${item.image}" alt="${item.title||''}" onerror="this.style.display='none'"/>${item.date ? `<span class="date-badge">${item.date.substring(5,10)}</span>` : ''}</div>`;
+      } else if (item) {
+        html += `<div class="grid-cell" style="background:${colors[i%9]}"><div class="cell-label">${(item.title||'Untitled').substring(0,20)}</div></div>`;
+      } else {
+        html += `<div class="grid-cell" style="background:#ede8e3"></div>`;
+      }
+    }
+    html += '</div>';
+    document.getElementById('preview').innerHTML = html;
+
+    const listHtml = items.slice(0,9).map(item =>
+      `<div class="item-row">
+        <div class="dot"></div>
+        <span>${item.title || 'Untitled'}</span>
+        ${item.image ? '<span class="has-img">✓ has image</span>' : ''}
+      </div>`
+    ).join('');
+    document.getElementById('items-list').innerHTML = listHtml;
+  }
+</script>
+</body>
+</html>
